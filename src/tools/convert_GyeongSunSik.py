@@ -9,7 +9,7 @@ from langchain_teddynote.models import get_model_name, LLMs
 
 from ..utils.state import State
 
-GPT4oMINI = get_model_name(LLMs.GPT4o_MINI)
+GPT4oMINI2 = get_model_name(LLMs.GPT4o_MINI)
 llm = ChatOpenAI(temperature=1, model=GPT4oMINI)
 
 async def convert_GyeongSunSik_chunk(chunk: List[Dict]) -> List[Dict]:
