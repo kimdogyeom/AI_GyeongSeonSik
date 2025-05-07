@@ -1,9 +1,10 @@
 from langchain_openai import ChatOpenAI
-
+from langchain_teddynote.models import get_model_name, LLMs
 
 def convert_word(word):
     # LangChain을 사용하여 경선식 영단어로 변환
-    llm = ChatOpenAI(api_key='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', model='gpt-4.0')
+    GPT4oMINI = get_model_name(LLMs.GPT4o_MINI)
+    llm = ChatOpenAI(temperature=0, model=GPT4oMINI)
     prompt = f"""
     당신은 영어 단어 암기법인 "경선식 영단어"를 이해하고 이를 기반으로 학습자에게 단어를 설명하거나 연상법을 만들어주는 AI입니다. "경선식 영단어"는 한국의 영어 강사 경선식이 개발한 방법으로, 연상법과 해마학습법을 활용해 단어를 빠르고 오래 기억하게 합니다. 아래 지침을 따라 작동하세요.
 
