@@ -1,11 +1,12 @@
+from langchain_core.runnables import RunnableLambda, RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, END
 
 from src.utils.state import State
 from src.tools.convert_GyeongSunSik import convert_GyeongSunSik
-from src.tools.create_korean_meaning import create_korean_meaning
-from src.tools.identify_document_pattern import identify_document_pattern
 from src.tools.pdf_to_document import pdf_parser
+
+from src.analyze_and_format.main import build_transform_subgraph
 
 
 def Graph():
@@ -23,11 +24,27 @@ def Graph():
         else:
             return END
 
+    # 부모 상태와 자식 상태 간의 데이터 변환 및 자식 그래프 호출 처리
+    def analyze_and_format(state: State) -> State:
+        vocabulary = "\n".join([doc.page_content for doc in state["before_vocabulary"]])
+
+        sample_text = vocabulary[:1500] if len(vocabulary) > 1500 else vocabulary
+
+        child_graph_input = {"sample_text": sample_text, "full_text": vocabulary}
+
+        config = RunnableConfig(recursion_limit=15)
+        child_graph_output = build_transform_subgraph().invoke(config=config, input=child_graph_input)
+
+        state["formatted_chunks"] = child_graph_output["chunks"]
+        return state
+
     # 노드 추가
     workflow.add_node("pdf_to_document", pdf_parser)
-    # workflow.add_node("identify_document_pattern", identify_document_pattern)
-    workflow.add_node("create_korean_meaning", create_korean_meaning)
-    workflow.add_node("convert_GyeongSunSik", convert_GyeongSunSik)
+    workflow.add_node("analyze_and_format", analyze_and_format)
+    workflow.add_node(
+        "convert_GyeongSunSik",
+        RunnableLambda(convert_GyeongSunSik)
+    )
 
     # 엣지 정의
     workflow.add_conditional_edges(
@@ -38,18 +55,9 @@ def Graph():
             END: END,
         },
     )
-    # workflow.add_edge("pdf_to_document", "identify_document_pattern")
 
-    # workflow.add_conditional_edges(
-    #     "identify_document_pattern",
-    #     lambda state: state["has_kor_translated"],
-    #     {
-    #         True: "convert_GyeongSunSik",
-    #         False: "create_korean_meaning"
-    #     })
-
-    workflow.add_edge("pdf_to_document", "create_korean_meaning")
-    workflow.add_edge("create_korean_meaning", "convert_GyeongSunSik")
+    workflow.add_edge("pdf_to_document", "analyze_and_format")
+    workflow.add_edge("analyze_and_format", "convert_GyeongSunSik")
     workflow.add_edge("convert_GyeongSunSik", END)
 
     # 그래프 컴파일
